@@ -13,7 +13,7 @@ logmessage = str(nowtime) + ',' + status
 def from_unix_to_readable(unix_timestamp):
     return(datetime.fromtimestamp(unix_timestamp).strftime('%B %d, %Y %H:%M:%S'))
 
-with open('mylog.txt', 'a') as logfile:
+with open('cap.log', 'a') as logfile:
    logfile.write(logmessage) 
    logfile.write('\n')
 
