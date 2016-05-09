@@ -14,7 +14,7 @@ def from_unix_to_readable(unix_timestamp):
     return(datetime.fromtimestamp(unix_timestamp).strftime('%B %d %Y %H:%M'))
 
 def add_log_message(logmessage):
-    with open(log_file_path) as logfile:
+    with open(log_file_path, 'a') as logfile:
        logfile.write(logmessage) 
        logfile.write('\n')
 
