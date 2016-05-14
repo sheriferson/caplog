@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from os.path import expanduser
+import json
 import subprocess
 import sys
 import time
@@ -13,33 +14,40 @@ log_file_path = home + '/cap.log'
 def from_unix_to_readable(unix_timestamp):
     return(datetime.fromtimestamp(unix_timestamp).strftime('%B %d %Y %H:%M'))
 
-def add_log_message(logmessage):
-    with open(log_file_path, 'a') as logfile:
-       logfile.write(logmessage) 
-       logfile.write('\n')
+def read_all_entries(log_file_path):
+    with open(log_file_path, 'r') as logfile:
+        entries = json.load(logfile)
 
-    logfile.close()
+    return(entries)
+
+def save_updated_entries(entries):
+    with open(log_file_path, 'w') as logfile:
+        json.dump(entries, logfile)
+
+def add_log_message(nowtime, logmessage):
+    if logmessage != "":
+        entries = read_all_entries(log_file_path)
+        entries.append({'timestamp':nowtime, 'entry':logmessage})
+
+        save_updated_entries(entries)
 
 # reference: http://stackoverflow.com/a/136280
 def show_log_tail(n = 3):
-    loglines = subprocess.check_output(["tail", "-n", str(n), log_file_path])
-    loglines = loglines.decode('utf-8').split('\n')
-    for line in loglines:
-        if line != '':
-            logdate, logmsg = line.split(',')
-            logdate = from_unix_to_readable(float(logdate))
-            formatted_log = u'🚩 ' + '  ' + logdate + '  ' + logmsg
-            print(formatted_log)
+    entries = read_all_entries(log_file_path)
 
-arguments = sys.argv
+    for entry in entries[n*-1:]:
+        logdate = from_unix_to_readable(entry['timestamp'])
+        formatted_entry = u'🚩 ' + '  ' + logdate + '  ' + entry['entry']
+        print(formatted_entry)
 
-if len(arguments) > 1:
-    nowtime = int(time.mktime(time.localtime()))
-    arguments.pop(0)
-    status = ' '.join(arguments)
-    logmessage = str(nowtime) + ',' + status
-    add_log_message(logmessage)
-else:
-    show_log_tail()
+if __name__ == "__main__":
+    arguments = sys.argv
+    if len(arguments) > 1:
+        arguments.pop(0)
+        nowtime = int(time.mktime(time.localtime()))
+        logmessage = ' '.join(arguments)
+        add_log_message(nowtime, logmessage)
+    else:
+        show_log_tail()
 
 
