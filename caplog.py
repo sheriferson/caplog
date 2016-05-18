@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import argparse
 from datetime import datetime
 from os.path import expanduser
 import json
@@ -51,13 +52,37 @@ def show_random_log():
     print(format_log_entry(random.choice(entries)))
 
 if __name__ == "__main__":
-    arguments = sys.argv
-    if len(arguments) > 1:
-        arguments.pop(0)
-        nowtime = int(time.mktime(time.localtime()))
-        logmessage = ' '.join(arguments)
-        add_log_message(nowtime, logmessage)
-    else:
+    parser = argparse.ArgumentParser(description = 'I am the captain. This is my log. caplog keeps short simple logs.')
+
+    # show last n entries
+    parser.add_argument('-l', '--last', dest = 'nlogs', help = 'show last n entries, default if left empty is 3',
+            nargs = '?',
+            action = 'store',
+            type = int)
+
+    # show random log
+    parser.add_argument("-r", "--random", help = "show a randomly chosen entry from logs",
+            action = "store_true")
+
+    # optional log message
+    parser.add_argument("logmessage", nargs = '*', type = str, help = "The log message")
+
+    args = parser.parse_args()
+
+    # if user only enters $ caplog show default number of last entries
+    if len(sys.argv) <= 1:
         show_log_tail()
+    # if user specified $ caplog -r or $ caplog --random, show random entry
+    elif args.random:
+        show_random_log()
+    # if user specified a number of last entries with $ caplog --last n, show last n logs
+    elif args.nlogs:
+        show_log_tail(args.nlogs)
+    # otherwise, log the message the user entered
+    else:
+        if args.logmessage:
+            nowtime = int(time.mktime(time.localtime()))
+            logmessage = ' '.join(args.logmessage).strip()
+            add_log_message(nowtime, logmessage)
 
 
