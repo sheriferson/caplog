@@ -1,1 +1,3 @@
 cap.log
+*.pyc
+__pychache__/
