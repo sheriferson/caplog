@@ -24,7 +24,8 @@ $ caplog Made progress on my caplog script.
 Other usage:
 
 ```text
-usage: caplog.py [-h] [-l [NLOGS]] [-r] [logmessage [logmessage ...]]
+usage: caplog.py [-h] [-a AMEND [AMEND ...] | -l [NLOGS] | -r]
+                 [logmessage [logmessage ...]]
 
 I am the captain. This is my log. caplog keeps short simple logs.
 
@@ -33,6 +34,8 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -a AMEND [AMEND ...], --amend AMEND [AMEND ...]
+                        amend last log entry
   -l [NLOGS], --last [NLOGS]
                         show last n entries, default if left empty is 3
   -r, --random          show a randomly chosen entry from logs
