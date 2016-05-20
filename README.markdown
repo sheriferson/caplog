@@ -21,6 +21,23 @@ Make a new log entry.
 $ caplog Made progress on my caplog script.
 ```
 
+Other usage:
+
+```text
+usage: caplog.py [-h] [-l [NLOGS]] [-r] [logmessage [logmessage ...]]
+
+I am the captain. This is my log. caplog keeps short simple logs.
+
+positional arguments:
+  logmessage            The log message
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -l [NLOGS], --last [NLOGS]
+                        show last n entries, default if left empty is 3
+  -r, --random          show a randomly chosen entry from logs
+```
+
 If used without arguments, `caplog` shows the last three entries in the log.
 
 ```text
