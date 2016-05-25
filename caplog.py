@@ -6,12 +6,19 @@ from os.path import expanduser
 import json
 import subprocess
 import random
+import re
 import sys
 import time
 
 # reference: http://stackoverflow.com/a/4028943
 home = expanduser("~")
 log_file_path = home + '/cap.log'
+
+def grep_search_logs(search_string):
+    entries = read_all_entries(log_file_path)
+
+    results = filter(lambda entry:re.search(search_string, entry['entry']), entries)
+    return(results)
 
 def amend_last_entry(logmessage):
     entries = read_all_entries(log_file_path)
@@ -64,22 +71,28 @@ if __name__ == "__main__":
     # add a mutually exclusive group
     # user can do only one of the following:
     #   -a for amend
+    #   -g for grep
     #   -l for list
     #   -r for random
     group = parser.add_mutually_exclusive_group()
 
-    # amend last log entry
+    # -a amend last log entry
     group.add_argument('-a', '--amend', help = 'amend last log entry',
             nargs = '+',
             action = 'store')
 
-    # show last n entries
+    # -g show resulting entries for search term
+    group.add_argument('-g', '--grep', help = 'search entries including term',
+            nargs = '+',
+            action = 'store')
+
+    # -l show last n entries
     group.add_argument('-l', '--last', dest = 'nlogs', help = 'show last n entries, default if left empty is 3',
             nargs = '?',
             action = 'store',
             type = int)
 
-    # show random log
+    # -r show random log
     group.add_argument("-r", "--random", help = "show a randomly chosen entry from logs",
             action = "store_true")
 
@@ -98,6 +111,15 @@ if __name__ == "__main__":
     # if user specified a number of last entries with $ caplog --last n, show last n logs
     elif args.nlogs:
         show_log_tail(args.nlogs)
+    # if user specified $ caplog -g searchterm, show any results
+    elif args.grep:
+        search_term = ' '.join(args.grep)
+        results = grep_search_logs(search_term)
+
+        if results:
+            for result in results:
+                print(format_log_entry(result))
+
     # if user specified $ caplog -r or $ caplog --random, show random entry
     elif args.random:
         show_random_log()
