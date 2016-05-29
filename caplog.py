@@ -2,7 +2,7 @@
 
 import argparse
 from datetime import datetime
-from os.path import expanduser
+from os.path import expanduser, isfile
 import json
 import subprocess
 import random
@@ -37,10 +37,16 @@ def from_unix_to_readable(unix_timestamp):
     return(datetime.fromtimestamp(unix_timestamp).strftime('%B %d %Y %H:%M'))
 
 def read_all_entries(log_file_path):
-    with open(log_file_path, 'r') as logfile:
-        entries = json.load(logfile)
+    if not isfile(log_file_path):
+        raise IOError('Log file not found.')
 
-    return(entries)
+    try:
+        with open(log_file_path, 'r') as logfile:
+            entries = json.load(logfile)
+
+        return(entries)
+    except:
+        raise RuntimeError('A problem occurred while parsing log file. File might be empty or corrupt.')
 
 def save_updated_entries(entries):
     with open(log_file_path, 'w') as logfile:
