@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import dateparser
 from datetime import datetime
 from os.path import expanduser, isfile
 import json
@@ -8,6 +9,7 @@ import subprocess
 import random
 import re
 import sys
+from termcolor import colored
 import time
 
 # reference: http://stackoverflow.com/a/4028943
@@ -52,10 +54,16 @@ def save_updated_entries(entries):
     with open(log_file_path, 'w') as logfile:
         json.dump(entries, logfile)
 
-def add_log_message(nowtime, logmessage):
+def add_log_message(nowtime, logmessage, from_the_past = False):
     if logmessage != "":
         entries = read_all_entries(log_file_path)
         entries.append({'timestamp':nowtime, 'entry':logmessage})
+
+        # if this is a log entry with a past date,
+        # make sure you sort entries before saving them
+        if from_the_past:
+            # reference: http://stackoverflow.com/a/12039764
+            entries.sort(key = lambda x: x['timestamp'])
 
         save_updated_entries(entries)
 
@@ -98,6 +106,11 @@ if __name__ == "__main__":
             action = 'store',
             type = int)
 
+    # -p enter log entry from and in the past
+    group.add_argument('-p', '--past', help = 'enter a log entry from the past',
+            nargs = '*',
+            action = 'store')
+
     # -r show random log
     group.add_argument("-r", "--random", help = "show a randomly chosen entry from logs",
             action = "store_true")
@@ -110,13 +123,40 @@ if __name__ == "__main__":
     # if user only enters $ caplog show default number of last entries
     if len(sys.argv) <= 1:
         show_log_tail()
+
     # if user specified the amend option, amend the last log entry
     elif args.amend:
         newlogmessage = ' '.join(args.amend)
         amend_last_entry(newlogmessage)
+
+    # if user specified past date with the -p switch,
+    # create the new date and prompt for an entry
+    # if left empty, it cancels the operation
+    elif args.past:
+        past_date_term = ' '.join(args.past)
+        past_date = dateparser.parse(past_date_term, settings = {'TIMEZONE': time.strftime('%Z')})
+
+        if past_date is None:
+            print("I couldn't parse the term you entered.")
+            quit()
+
+        past_date_timestamp = time.mktime(past_date.timetuple())
+
+        print(colored('Logging an entry dated:' + '\t' +
+                past_date.strftime('%B %d %Y %H:%M') + '\n' +
+                'Leave empty to cancel.',
+                'cyan'))
+        past_message = input('> ')
+
+        if past_message.strip() == '':
+            print(colored('Cancelled.', 'red'))
+        else:
+            add_log_message(past_date_timestamp, past_message, from_the_past = True)
+
     # if user specified a number of last entries with $ caplog --last n, show last n logs
     elif args.nlogs:
         show_log_tail(args.nlogs)
+
     # if user specified $ caplog -g searchterm, show any results
     elif args.grep:
         search_term = ' '.join(args.grep)

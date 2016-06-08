@@ -25,7 +25,7 @@ Other usage:
 
 ```text
 usage: caplog.py [-h] [-a AMEND [AMEND ...] | -g GREP [GREP ...] | -l [NLOGS]
-                 | -r]
+                 | -p [PAST [PAST ...]] | -r]
                  [logmessage [logmessage ...]]
 
 I am the captain. This is my log. caplog keeps short simple logs.
@@ -41,6 +41,8 @@ optional arguments:
                         search entries including term
   -l [NLOGS], --last [NLOGS]
                         show last n entries, default if left empty is 3
+  -p [PAST [PAST ...]], --past [PAST [PAST ...]]
+                        enter a log entry from the past
   -r, --random          show a randomly chosen entry from logs
 ```
 
