@@ -13,7 +13,7 @@ from termcolor import colored
 import time
 
 # reference: http://stackoverflow.com/a/4028943
-home = expanduser("~")
+home = expanduser('~')
 log_file_path = home + '/cap.log'
 
 def grep_search_logs(search_string):
@@ -55,7 +55,7 @@ def save_updated_entries(entries):
         json.dump(entries, logfile)
 
 def add_log_message(nowtime, logmessage, from_the_past = False):
-    if logmessage != "":
+    if logmessage != '':
         entries = read_all_entries(log_file_path)
         entries.append({'timestamp':nowtime, 'entry':logmessage})
 
@@ -79,7 +79,7 @@ def show_random_log():
 
     print(format_log_entry(random.choice(entries)))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'I am the captain. This is my log. caplog keeps short simple logs.')
 
     # add a mutually exclusive group
@@ -112,11 +112,11 @@ if __name__ == "__main__":
             action = 'store')
 
     # -r show random log
-    group.add_argument("-r", "--random", help = "show a randomly chosen entry from logs",
-            action = "store_true")
+    group.add_argument('-r', '--random', help = 'show a randomly chosen entry from logs',
+            action = 'store_true')
 
     # optional log message
-    parser.add_argument("logmessage", nargs = '*', type = str, help = "The log message")
+    parser.add_argument('logmessage', nargs = '*', type = str, help = 'The log message')
 
     args = parser.parse_args()
 
