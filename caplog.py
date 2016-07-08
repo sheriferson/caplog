@@ -2,9 +2,7 @@
 
 import argparse
 import dateparser
-# from datetime import datetime
 from os.path import expanduser, isfile
-# import json
 import sqlite3
 import subprocess
 import random
@@ -19,8 +17,6 @@ log_file_path = home + '/caplog.db'
 
 def grep_search_logs(search_string):
     results = read_entries(log_file_path, search_term = search_string)
-
-    # results = filter(lambda entry:re.search(search_string, entry[1]), results)
     return(results)
 
 def amend_last_entry(logmessage):
@@ -40,12 +36,8 @@ def amend_last_entry(logmessage):
         conn.close()
 
 def format_log_entry(sql_row):
-    # logdate = from_unix_to_readable(jsonentry['timestamp'])
     formatted_entry = u'🚩 ' + '  ' + sql_row[0] + '  ' + sql_row[1]
     return(formatted_entry)
-
-# def from_unix_to_readable(unix_timestamp):
-#     return(datetime.fromtimestamp(unix_timestamp).strftime('%B %d %Y %H:%M'))
 
 def read_entries(log_file_path, n = 0, search_term = "", random = False):
     if not isfile(log_file_path):
@@ -77,22 +69,8 @@ def read_entries(log_file_path, n = 0, search_term = "", random = False):
         except:
             raise RuntimeError('A problem occurred while parsing log file. File might be empty or corrupt.')
 
-# def save_updated_entries(entries):
-#     with open(log_file_path, 'w') as logfile:
-#         json.dump(entries, logfile)
-
 def add_log_message(nowtime, logmessage, from_the_past = False):
     if logmessage != '':
-        # entries = read_entries(log_file_path)
-        # entries.append({'timestamp':nowtime, 'entry':logmessage})
-
-        # if this is a log entry with a past date,
-        # make sure you sort entries before saving them
-        # if from_the_past:
-            # reference: http://stackoverflow.com/a/12039764
-            # entries.sort(key = lambda x: x['timestamp'])
-
-        # save_updated_entries(entries)
         conn = sqlite3.connect(log_file_path)
         c = conn.cursor()
         c.execute("insert into logs (timestamp, entry) values ('{time}', '{message}')".format(time = nowtime, message = logmessage))
@@ -101,7 +79,6 @@ def add_log_message(nowtime, logmessage, from_the_past = False):
 
 def show_random_log():
     entries = read_entries(log_file_path)
-
     print(format_log_entry(random.choice(entries)))
 
 # reference: http://stackoverflow.com/a/3940137
