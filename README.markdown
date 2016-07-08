@@ -5,7 +5,7 @@ I am the captain. This is my log.
 My computer's OS has logging, why don't I?
 
 `caplog` is a command-line script that I use to write one-line logs about anything I think is worth logging.
-The entries are saved in `json` format to `~/cap.log`.
+The script used to save entries to a `json` file `~/cap.log`, but things started getting really slow, so I moved to an `sqlite` database located in `~/caplog.db`.
 
 `caplog` is compatible with Python 2 & 3.
 
