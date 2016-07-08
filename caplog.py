@@ -2,9 +2,10 @@
 
 import argparse
 import dateparser
-from datetime import datetime
+# from datetime import datetime
 from os.path import expanduser, isfile
-import json
+# import json
+import sqlite3
 import subprocess
 import random
 import re
@@ -14,70 +15,102 @@ import time
 
 # reference: http://stackoverflow.com/a/4028943
 home = expanduser('~')
-log_file_path = home + '/cap.log'
+log_file_path = home + '/caplog.db'
 
 def grep_search_logs(search_string):
-    entries = read_all_entries(log_file_path)
+    results = read_entries(log_file_path, search_term = search_string)
 
-    results = filter(lambda entry:re.search(search_string, entry['entry']), entries)
+    # results = filter(lambda entry:re.search(search_string, entry[1]), results)
     return(results)
 
 def amend_last_entry(logmessage):
-    entries = read_all_entries(log_file_path)
+    # 1. get last entry
+    # 2. use the timestamp as the lookup value
+    # 3. update row
 
-    entry = entries.pop(-1)
-    entries.append({'timestamp':entry['timestamp'], 'entry':logmessage})
+    if logmessage != '':
+        conn = sqlite3.connect(log_file_path)
+        c = conn.cursor()
+        c.execute("select * from logs order by timestamp desc limit 1")
+        lastrow = c.fetchall()
+        lasttime = lastrow[0][0]
 
-    save_updated_entries(entries)
+        c.execute("update logs set entry=('{logentry}') where timestamp=({time})".format(logentry = logmessage, time = lasttime))
+        conn.commit()
+        conn.close()
 
-def format_log_entry(jsonentry):
-    logdate = from_unix_to_readable(jsonentry['timestamp'])
-    formatted_entry = u'🚩 ' + '  ' + logdate + '  ' + jsonentry['entry']
+def format_log_entry(sql_row):
+    # logdate = from_unix_to_readable(jsonentry['timestamp'])
+    formatted_entry = u'🚩 ' + '  ' + sql_row[0] + '  ' + sql_row[1]
     return(formatted_entry)
 
-def from_unix_to_readable(unix_timestamp):
-    return(datetime.fromtimestamp(unix_timestamp).strftime('%B %d %Y %H:%M'))
+# def from_unix_to_readable(unix_timestamp):
+#     return(datetime.fromtimestamp(unix_timestamp).strftime('%B %d %Y %H:%M'))
 
-def read_all_entries(log_file_path):
+def read_entries(log_file_path, n = 0, search_term = "", random = False):
     if not isfile(log_file_path):
-        raise IOError('Log file not found.')
+        print('No log file found. Creating file...')
+        conn = sqlite3.connect(log_file_path)
+        c = conn.cursor()
+        c.execute('create table logs (timestamp INTEGER, entry TEXT)')
+        c.execute("insert into logs (timestamp, entry) values (12345678, 'Test')")
+        conn.commit()
+        conn.close()
+        print('New log file created at {logfile}'.format(logfile = log_file_path))
 
-    try:
-        with open(log_file_path, 'r') as logfile:
-            entries = json.load(logfile)
+    else:
+        try:
+            conn = sqlite3.connect(log_file_path)
+            c = conn.cursor()
+            if n > 0:
+                c.execute("select datetime(timestamp, 'unixepoch', 'localtime'), entry from logs order by timestamp desc limit {n};".format(n = n))
+            elif search_term != "":
+                c.execute("select datetime(timestamp, 'unixepoch', 'localtime'), entry from logs where entry like '%{searchterm}%' order by timestamp".format(searchterm = search_term))
+            elif random == True:
+                c.execute("select datetime(timestamp, 'unixepoch', 'localtime'), entry from logs order by Random() limit 1")
+            else:
+                c.execute("select datetime(timestamp, 'unixepoch', 'localtime'), entry from logs order by timestamp desc;")
 
-        return(entries)
-    except:
-        raise RuntimeError('A problem occurred while parsing log file. File might be empty or corrupt.')
+            entries = c.fetchall()
+            conn.close()
+            return(entries)
+        except:
+            raise RuntimeError('A problem occurred while parsing log file. File might be empty or corrupt.')
 
-def save_updated_entries(entries):
-    with open(log_file_path, 'w') as logfile:
-        json.dump(entries, logfile)
+# def save_updated_entries(entries):
+#     with open(log_file_path, 'w') as logfile:
+#         json.dump(entries, logfile)
 
 def add_log_message(nowtime, logmessage, from_the_past = False):
     if logmessage != '':
-        entries = read_all_entries(log_file_path)
-        entries.append({'timestamp':nowtime, 'entry':logmessage})
+        # entries = read_entries(log_file_path)
+        # entries.append({'timestamp':nowtime, 'entry':logmessage})
 
         # if this is a log entry with a past date,
         # make sure you sort entries before saving them
-        if from_the_past:
+        # if from_the_past:
             # reference: http://stackoverflow.com/a/12039764
-            entries.sort(key = lambda x: x['timestamp'])
+            # entries.sort(key = lambda x: x['timestamp'])
 
-        save_updated_entries(entries)
-
-# reference: http://stackoverflow.com/a/136280
-def show_log_tail(n = 3):
-    entries = read_all_entries(log_file_path)
-
-    for entry in entries[n*-1:]:
-        print(format_log_entry(entry))
+        # save_updated_entries(entries)
+        conn = sqlite3.connect(log_file_path)
+        c = conn.cursor()
+        c.execute("insert into logs (timestamp, entry) values ('{time}', '{message}')".format(time = nowtime, message = logmessage))
+        conn.commit()
+        conn.close()
 
 def show_random_log():
-    entries = read_all_entries(log_file_path)
+    entries = read_entries(log_file_path)
 
     print(format_log_entry(random.choice(entries)))
+
+# reference: http://stackoverflow.com/a/3940137
+def show_log_tail(n = 3):
+    entries = read_entries(log_file_path, n)
+    entries.reverse()
+
+    for entry in entries:
+        print(format_log_entry(entry))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'I am the captain. This is my log. caplog keeps short simple logs.')
@@ -122,7 +155,7 @@ if __name__ == '__main__':
 
     # if user only enters $ caplog show default number of last entries
     if len(sys.argv) <= 1:
-        show_log_tail()
+        show_log_tail(3)
 
     # if user specified the amend option, amend the last log entry
     elif args.amend:
@@ -168,7 +201,9 @@ if __name__ == '__main__':
 
     # if user specified $ caplog -r or $ caplog --random, show random entry
     elif args.random:
-        show_random_log()
+        random_row = read_entries(log_file_path, random = True)
+        print(format_log_entry(random_row[0]))
+
     # otherwise, log the message the user entered
     else:
         if args.logmessage:
