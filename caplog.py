@@ -15,6 +15,26 @@ import time
 home = expanduser('~')
 log_file_path = home + '/caplog.db'
 
+def add_to_the_past(past_date_term):
+    past_date = dateparser.parse(past_date_term, settings = {'TIMEZONE': time.strftime('%Z')})
+
+    if past_date is None:
+        print("I couldn't parse the term you entered.")
+        quit()
+
+    past_date_timestamp = time.mktime(past_date.timetuple())
+
+    print(colored('Logging an entry dated:' + '\t' +
+            past_date.strftime('%B %d %Y %H:%M') + '\n' +
+            'Leave empty to cancel.',
+            'cyan'))
+    past_message = input('> ')
+
+    if past_message.strip() == '':
+        print(colored('Cancelled.', 'red'))
+    else:
+        add_log_message(past_date_timestamp, past_message)
+
 def grep_search_logs(search_string):
     results = read_entries(log_file_path, search_term = search_string)
     return(results)
@@ -69,7 +89,7 @@ def read_entries(log_file_path, n = 0, search_term = "", random = False):
         except:
             raise RuntimeError('A problem occurred while parsing log file. File might be empty or corrupt.')
 
-def add_log_message(nowtime, logmessage, from_the_past = False):
+def add_log_message(nowtime, logmessage):
     if logmessage != '':
         conn = sqlite3.connect(log_file_path)
         c = conn.cursor()
@@ -144,24 +164,7 @@ if __name__ == '__main__':
     # if left empty, it cancels the operation
     elif args.past:
         past_date_term = ' '.join(args.past)
-        past_date = dateparser.parse(past_date_term, settings = {'TIMEZONE': time.strftime('%Z')})
-
-        if past_date is None:
-            print("I couldn't parse the term you entered.")
-            quit()
-
-        past_date_timestamp = time.mktime(past_date.timetuple())
-
-        print(colored('Logging an entry dated:' + '\t' +
-                past_date.strftime('%B %d %Y %H:%M') + '\n' +
-                'Leave empty to cancel.',
-                'cyan'))
-        past_message = input('> ')
-
-        if past_message.strip() == '':
-            print(colored('Cancelled.', 'red'))
-        else:
-            add_log_message(past_date_timestamp, past_message, from_the_past = True)
+        add_to_the_past(past_date_term)
 
     # if user specified a number of last entries with $ caplog --last n, show last n logs
     elif args.nlogs:
