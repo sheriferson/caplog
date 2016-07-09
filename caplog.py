@@ -64,8 +64,14 @@ def read_entries(log_file_path, n = 0, search_term = "", random = False):
         print('No log file found. Creating file...')
         conn = sqlite3.connect(log_file_path)
         c = conn.cursor()
-        c.execute('create table logs (timestamp INTEGER, entry TEXT)')
-        c.execute("insert into logs (timestamp, entry) values (12345678, 'Test')")
+        c.execute('create table logs (timestamp TIMESTAMP, entry TEXT)')
+        c.execute('create table console (log_timestamp TIMESTAMP, entry_timestamp TIMESTAMP)')
+        c.execute('''create trigger logging
+                after insert on logs
+                begin
+                    insert into console (log_timestamp, entry_timestamp) values (strftime('%s', 'now'), new.timestamp);
+                end
+                ;''')
         conn.commit()
         conn.close()
         print('New log file created at {logfile}'.format(logfile = log_file_path))
@@ -89,11 +95,11 @@ def read_entries(log_file_path, n = 0, search_term = "", random = False):
         except:
             raise RuntimeError('A problem occurred while parsing log file. File might be empty or corrupt.')
 
-def add_log_message(nowtime, logmessage):
+def add_log_message(logmessage):
     if logmessage != '':
         conn = sqlite3.connect(log_file_path)
         c = conn.cursor()
-        c.execute("insert into logs (timestamp, entry) values ('{time}', '{message}')".format(time = nowtime, message = logmessage))
+        c.execute("insert into logs (timestamp, entry) values (strftime('%s', 'now'), '{message}')".format(message = logmessage))
         conn.commit()
         conn.close()
 
@@ -104,10 +110,11 @@ def show_random_log():
 # reference: http://stackoverflow.com/a/3940137
 def show_log_tail(n = 3):
     entries = read_entries(log_file_path, n)
-    entries.reverse()
+    if type(entries) is list and len(entries) > 0:
+        entries.reverse()
 
-    for entry in entries:
-        print(format_log_entry(entry))
+        for entry in entries:
+            print(format_log_entry(entry))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'I am the captain. This is my log. caplog keeps short simple logs.')
@@ -187,7 +194,6 @@ if __name__ == '__main__':
     # otherwise, log the message the user entered
     else:
         if args.logmessage:
-            nowtime = int(time.mktime(time.localtime()))
             logmessage = ' '.join(args.logmessage).strip()
-            add_log_message(nowtime, logmessage)
+            add_log_message(logmessage)
 
