@@ -33,7 +33,7 @@ def add_to_the_past(past_date_term):
     if past_message.strip() == '':
         print(colored('Cancelled.', 'red'))
     else:
-        add_log_message(past_date_timestamp, past_message)
+        add_log_message(past_message, past_date_timestamp)
 
 def grep_search_logs(search_string):
     results = read_entries(log_file_path, search_term = search_string)
@@ -95,11 +95,14 @@ def read_entries(log_file_path, n = 0, search_term = "", random = False):
         except:
             raise RuntimeError('A problem occurred while parsing log file. File might be empty or corrupt.')
 
-def add_log_message(logmessage):
+def add_log_message(logmessage, past_time = 0):
     if logmessage != '':
         conn = sqlite3.connect(log_file_path)
         c = conn.cursor()
-        c.execute("insert into logs (timestamp, entry) values (strftime('%s', 'now'), '{message}')".format(message = logmessage))
+        if past_time != 0: # user provided a past time
+            c.execute("insert into logs (timestamp, entry) values ({pasttime}, '{message}')".format(pasttime = past_time, message = logmessage))
+        else:
+            c.execute("insert into logs (timestamp, entry) values (strftime('%s', 'now'), '{message}')".format(message = logmessage))
         conn.commit()
         conn.close()
 
