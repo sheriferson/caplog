@@ -97,6 +97,8 @@ def read_entries(log_file_path, n = 0, search_term = "", random = False):
 
 def add_log_message(logmessage, past_time = 0):
     if logmessage != '':
+        # sanitize apostrophes so I can write "I'm" and "don't" in log messages
+        logmessage = logmessage.replace("'", "''")
         conn = sqlite3.connect(log_file_path)
         c = conn.cursor()
         if past_time != 0: # user provided a past time
