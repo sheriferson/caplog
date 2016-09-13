@@ -108,6 +108,14 @@ def add_log_message(logmessage, past_time = 0):
         conn.commit()
         conn.close()
 
+def show_count():
+    conn = sqlite3.connect(log_file_path)
+    c = conn.cursor()
+    c.execute('select count(*) from logs')
+    count = c.fetchall()
+    count = count[0][0]
+    return(count)
+
 def show_random_log():
     entries = read_entries(log_file_path)
     print(format_log_entry(random.choice(entries)))
@@ -153,6 +161,10 @@ if __name__ == '__main__':
             nargs = '*',
             action = 'store')
 
+    # -c number of entries
+    group.add_argument('-c', '--count', help = 'show count of log entries',
+            action = 'store_true')
+
     # -r show random log
     group.add_argument('-r', '--random', help = 'show a randomly chosen entry from logs',
             action = 'store_true')
@@ -190,6 +202,10 @@ if __name__ == '__main__':
         if results:
             for result in results:
                 print(format_log_entry(result))
+
+    # the -c switch will show number of entries
+    elif args.count:
+        print(show_count())
 
     # if user specified $ caplog -r or $ caplog --random, show random entry
     elif args.random:
