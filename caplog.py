@@ -55,6 +55,21 @@ def amend_last_entry(logmessage):
         conn.commit()
         conn.close()
 
+def delete_last_entry():
+    # connect to db
+    # delete last row in table logs
+
+    print(colored('Are you sure you want to delete the last entry? Y/n', 'red'))
+    confirm_delete = input('> ')
+
+    if confirm_delete.lower() == 'y':
+        conn = sqlite3.connect(log_file_path)
+        c = conn.cursor()
+        c.execute('delete from logs where timestamp = (select max(timestamp) from logs);')
+        conn.commit()
+        conn.close()
+        print(colored('Last entry deleted.', 'cyan'))
+
 def format_log_entry(sql_row):
     formatted_entry = u'🚩 ' + '  ' + sql_row[0] + '  ' + sql_row[1]
     return(formatted_entry)
@@ -135,6 +150,7 @@ if __name__ == '__main__':
     # add a mutually exclusive group
     # user can do only one of the following:
     #   -a for amend
+    #   -d for delete last entry
     #   -g for grep
     #   -l for list
     #   -r for random
@@ -144,6 +160,10 @@ if __name__ == '__main__':
     group.add_argument('-a', '--amend', help = 'amend last log entry',
             nargs = '+',
             action = 'store')
+
+    # -d delete last log entry
+    group.add_argument('-d', '--delete', help = 'delete last log entry',
+            action = 'store_true')
 
     # -g show resulting entries for search term
     group.add_argument('-g', '--grep', help = 'search entries including term',
@@ -182,6 +202,10 @@ if __name__ == '__main__':
     elif args.amend:
         newlogmessage = ' '.join(args.amend)
         amend_last_entry(newlogmessage)
+
+    # if user specified the delete option, delete the last log entry
+    elif args.delete:
+        delete_last_entry()
 
     # if user specified past date with the -p switch,
     # create the new date and prompt for an entry
