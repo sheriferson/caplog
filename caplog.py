@@ -7,7 +7,6 @@ and various functions.
 
 import argparse
 from os.path import expanduser, isfile
-import random
 import sqlite3
 import sys
 import time
@@ -19,7 +18,27 @@ from termcolor import colored
 home = expanduser('~')
 log_file_path = home + '/caplog.db'
 
-def add_to_the_past(past_date_term):
+def create_log_file(log_location):
+    """
+    This function is called internally when no log file is found.
+    """
+    print('No log file found. Creating file...')
+
+    conn = sqlite3.connect(log_location)
+    c = conn.cursor()
+    c.execute('create table logs (timestamp TIMESTAMP, entry TEXT);')
+    c.execute('create table console (log_timestamp TIMESTAMP, entry_timestamp TIMESTAMP);')
+    c.execute('''create trigger logging
+            after insert on logs
+            begin
+                insert into console (log_timestamp, entry_timestamp) values (strftime('%s', 'now'), new.timestamp);
+            end
+            ;''')
+    conn.commit()
+    conn.close()
+    print('New log file created at {logfile}'.format(logfile=log_location))
+
+def add_to_the_past(log_location, past_date_term):
     """
     Invoked with caplog -p 4 hours ago (example)
     add_to_the_past() will parse the date string, prompt for an entry message,
@@ -42,17 +61,17 @@ def add_to_the_past(past_date_term):
     if past_message.strip() == '':
         print(colored('Cancelled.', 'red'))
     else:
-        add_log_message(past_message, past_date_timestamp)
+        add_log_message(log_location, past_message, past_date_timestamp)
 
-def grep_search_logs(search_string):
+def grep_search_logs(log_location, search_string):
     """
     grep_search_logs() is invoked by caplog -g 'search term'
     It will pass this search term to read_entries()
     """
-    results = read_entries(log_file_path, search_term=search_string)
+    results = read_entries(log_location, search_term=search_string)
     return results
 
-def amend_last_entry(logmessage):
+def amend_last_entry(log_location, logmessage):
     """
     Invoked by `caplog -a New amended entry`
     If passed a non-empty string, it will connect to the log file
@@ -63,7 +82,7 @@ def amend_last_entry(logmessage):
     # 3. update row
 
     if logmessage != '':
-        conn = sqlite3.connect(log_file_path)
+        conn = sqlite3.connect(log_location)
         c = conn.cursor()
         c.execute("select * from logs order by timestamp desc limit 1")
         lastrow = c.fetchall()
@@ -74,7 +93,7 @@ def amend_last_entry(logmessage):
         conn.commit()
         conn.close()
 
-def delete_last_entry():
+def delete_last_entry(log_location):
     """
     Connects to log entries file and deletes last entry.
     Last entry is defined as entry with max(timestamp).
@@ -83,7 +102,7 @@ def delete_last_entry():
     confirm_delete = input('> ')
 
     if confirm_delete.lower() == 'y':
-        conn = sqlite3.connect(log_file_path)
+        conn = sqlite3.connect(log_location)
         c = conn.cursor()
         c.execute('delete from logs where timestamp = (select max(timestamp) from logs);')
         conn.commit()
@@ -113,20 +132,7 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
     it will create the empty log file.
     """
     if not isfile(log_location):
-        print('No log file found. Creating file...')
-        conn = sqlite3.connect(log_location)
-        c = conn.cursor()
-        c.execute('create table logs (timestamp TIMESTAMP, entry TEXT)')
-        c.execute('create table console (log_timestamp TIMESTAMP, entry_timestamp TIMESTAMP)')
-        c.execute('''create trigger logging
-                after insert on logs
-                begin
-                    insert into console (log_timestamp, entry_timestamp) values (strftime('%s', 'now'), new.timestamp);
-                end
-                ;''')
-        conn.commit()
-        conn.close()
-        print('New log file created at {logfile}'.format(logfile=log_location))
+        create_log_file(log_location)
 
     else:
         try:
@@ -134,25 +140,25 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
             c = conn.cursor()
             if n > 0:
                 c.execute("""
-                        select datetime(timestamp, 'unixepoch', 'localtime')
+                        select strftime('%Y-%m-%d %H:%M', timestamp, 'unixepoch', 'localtime')
                         , entry from logs order by timestamp desc limit {n};
                         """.format(n=n))
 
             elif search_term != "":
                 c.execute("""
-                        select datetime(timestamp, 'unixepoch', 'localtime')
+                        select strftime('%Y-%m-%d %H:%M', timestamp, 'unixepoch', 'localtime')
                         , entry from logs where entry like '%{searchterm}%'
                         order by timestamp
                         """.format(searchterm=search_term))
 
             elif random_entry is True:
                 c.execute("""
-                          select datetime(timestamp, 'unixepoch', 'localtime')
+                          select strftime('%Y-%m-%d %H:%M', timestamp, 'unixepoch', 'localtime')
                           , entry from logs order by Random() limit 1
                           """)
             else:
                 c.execute("""
-                          select datetime(timestamp, 'unixepoch', 'localtime')
+                          select strftime('%Y-%m-%d %H:%M', timestamp, 'unixepoch', 'localtime')
                           , entry from logs order by timestamp desc;
                           """)
 
@@ -163,16 +169,19 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
             raise RuntimeError(("A problem occurred while parsing log file. "
                                 "File might be empty or corrupt."))
 
-def add_log_message(logmessage, past_time=0):
+def add_log_message(log_location, logmessage, past_time=0):
     """
     Invoked by `caplog My log message` or `caplog -p 4 hours ago` plus
     a message. It handles entering a log message at present time, or at a past
     time if the past_time variable contains something other than 0
     """
+    if not isfile(log_location):
+        create_log_file(log_location)
+
     if logmessage != '':
         # sanitize apostrophes so I can write "I'm" and "don't" in log messages
         logmessage = logmessage.replace("'", "''")
-        conn = sqlite3.connect(log_file_path)
+        conn = sqlite3.connect(log_location)
         c = conn.cursor()
 
         if past_time != 0: # user provided a past time
@@ -191,34 +200,26 @@ def add_log_message(logmessage, past_time=0):
         conn.commit()
         conn.close()
 
-def show_count():
+def show_count(log_location):
     """
     caplog -c
     will run show_count(), which will return/print
     the total number of entries in caplog.db
     """
-    conn = sqlite3.connect(log_file_path)
+    conn = sqlite3.connect(log_location)
     c = conn.cursor()
     c.execute('select count(*) from logs')
     count = c.fetchall()
     count = count[0][0]
     return count
 
-def show_random_log():
-    """
-    Invoked by `caplog -r`
-    It will read all entries and return a random.choice from the list.
-    """
-    entries = read_entries(log_file_path)
-    print(format_log_entry(random.choice(entries)))
-
 # reference: http://stackoverflow.com/a/3940137
-def show_log_tail(n=3):
+def show_log_tail(log_location, n=3):
     """
     invoked by default `caplog` with default n=3 or `caplog -l 6` which changes
     n to 6. It prints the latest n log entries from the log file.
     """
-    entries = read_entries(log_file_path, n)
+    entries = read_entries(log_location, n)
     if isinstance(entries, list) and len(entries) > 0:
         entries.reverse()
 
@@ -286,32 +287,32 @@ if __name__ == '__main__':
 
     # if user only enters $ caplog show default number of last entries
     if len(sys.argv) <= 1:
-        show_log_tail(3)
+        show_log_tail(log_file_path, 3)
 
     # if user specified the amend option, amend the last log entry
     elif args.amend:
         newlogmessage = ' '.join(args.amend)
-        amend_last_entry(newlogmessage)
+        amend_last_entry(log_file_path, newlogmessage)
 
     # if user specified the delete option, delete the last log entry
     elif args.delete:
-        delete_last_entry()
+        delete_last_entry(log_file_path)
 
     # if user specified past date with the -p switch,
     # create the new date and prompt for an entry
     # if left empty, it cancels the operation
     elif args.past:
         joined_past_date_term = ' '.join(args.past)
-        add_to_the_past(joined_past_date_term)
+        add_to_the_past(log_file_path, joined_past_date_term)
 
     # if user specified a number of last entries with $ caplog --last n, show last n logs
     elif args.nlogs:
-        show_log_tail(args.nlogs)
+        show_log_tail(log_file_path, args.nlogs)
 
     # if user specified $ caplog -g searchterm, show any results
     elif args.grep:
         joined_search_term = ' '.join(args.grep)
-        grep_results = grep_search_logs(joined_search_term)
+        grep_results = grep_search_logs(log_file_path, joined_search_term)
 
         if grep_results:
             for result in grep_results:
@@ -319,15 +320,15 @@ if __name__ == '__main__':
 
     # the -c switch will show number of entries
     elif args.count:
-        print(show_count())
+        print(show_count(log_file_path))
 
     # if user specified $ caplog -r or $ caplog --random, show random entry
     elif args.random:
         random_row = read_entries(log_file_path, random_entry=True)
-        print(format_log_entry(random_row[0]))
+        print(format_log_entry(random_row))
 
     # otherwise, log the message the user entered
     else:
         if args.logmessage:
             joined_message = ' '.join(args.logmessage).strip()
-            add_log_message(joined_message)
+            add_log_message(log_file_path, joined_message)
