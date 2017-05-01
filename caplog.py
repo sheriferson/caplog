@@ -9,10 +9,12 @@ import argparse
 from os.path import expanduser, isfile
 import sqlite3
 import sys
+import textwrap
 import time
 
 import dateparser
 from termcolor import colored
+import terminaltables
 
 # reference: http://stackoverflow.com/a/4028943
 home = expanduser('~')
@@ -109,13 +111,31 @@ def delete_last_entry(log_location):
         conn.close()
         print(colored('Last entry deleted.', 'cyan'))
 
-def format_log_entry(sql_row):
+def format_log_entry(sql_rows):
     """
     This is a helper function that accepts "sql rows" from read_entries
-    and formats them for printing to stdout
+    and formats them for printing to stdout.
     """
-    formatted_entry = u'🚩 ' + '  ' + sql_row[0] + '  ' + sql_row[1]
-    return formatted_entry
+    # sql_rows is a list of tuples, we want it to be a list of lists
+    sql_rows = [list(x) for x in sql_rows]
+
+    # add a header row then add all other rows passed to format_log_entry()
+    header = [colored('time', 'cyan'), colored('entry', 'cyan')]
+    full_result = [header]
+    full_result.extend(sql_rows)
+
+    # create the SingleTable object so we can get max_width
+    # which we need to break up the entry texts to wrap properly
+    # this logic largely comes from terminaltables example3.py:
+    # https://github.com/Robpol86/terminaltables/blob/master/example3.py
+    return_table = terminaltables.SingleTable(full_result)
+    max_width = return_table.column_max_width(1)
+
+    for ii in list(range(1, len(return_table.table_data))):
+        wrapped_message = '\n'.join(textwrap.wrap(return_table.table_data[ii][1], max_width))
+        return_table.table_data[ii][1] = wrapped_message
+
+    return return_table.table
 
 def read_entries(log_location, n=0, search_term="", random_entry=False):
     """
@@ -223,8 +243,7 @@ def show_log_tail(log_location, n=3):
     if isinstance(entries, list) and len(entries) > 0:
         entries.reverse()
 
-        for entry in entries:
-            print(format_log_entry(entry))
+        print(format_log_entry(entries))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=("I am the captain. "
@@ -315,8 +334,7 @@ if __name__ == '__main__':
         grep_results = grep_search_logs(log_file_path, joined_search_term)
 
         if grep_results:
-            for result in grep_results:
-                print(format_log_entry(result))
+            print(format_log_entry(grep_results))
 
     # the -c switch will show number of entries
     elif args.count:

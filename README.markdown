@@ -24,8 +24,8 @@ $ caplog Made progress on my caplog script.
 Other usage:
 
 ```text
-usage: caplog.py [-h] [-a AMEND [AMEND ...] | -g GREP [GREP ...] | -l [NLOGS]
-                 | -p [PAST [PAST ...]] | -c | -r]
+usage: caplog.py [-h] [-a AMEND [AMEND ...] | -d | -g GREP [GREP ...] | -l
+                 [NLOGS] | -p [PAST [PAST ...]] | -c | -r]
                  [logmessage [logmessage ...]]
 
 I am the captain. This is my log. caplog keeps short simple logs.
@@ -37,6 +37,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -a AMEND [AMEND ...], --amend AMEND [AMEND ...]
                         amend last log entry
+  -d, --delete          delete last log entry
   -g GREP [GREP ...], --grep GREP [GREP ...]
                         search entries including term
   -l [NLOGS], --last [NLOGS]
@@ -51,8 +52,12 @@ If used without arguments, `caplog` shows the last three entries in the log.
 
 ```text
 $ caplog
-
-🚩  May 02 2016 17:18  Its time to move caplog to a place where I can use it everywhere.
-🚩  May 02 2016 17:18  And I just pushed a change to simple-statistics. Wanna keep going.
-🚩  May 03 2016 21:03  Made progress on my caplog script.
+┌──────────────────┬──────────────────────────────────────────────────────────────────────────────────────────┐
+│ time             │ entry                                                                                    │
+├──────────────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+│ 2016-05-02 17:18 │ It's time to move caplog to a place where I can use it everywhere.                       │
+│ 2016-05-02 17:18 │ And I just pushed a change to simple-statistics. Wanna keep going.                       │
+│ 2017-04-30 20:45 │ Big changes to caplog. A thorough refactoring and clean up to fix all pylint issues, and │
+│                  │ a rewrite of to print clean, pretty entries in a proper table.                           │
+└──────────────────┴──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
