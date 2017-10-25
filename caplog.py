@@ -6,7 +6,9 @@ and various functions.
 """
 
 import argparse
-from os.path import expanduser, isfile
+import os
+import re
+import shutil
 import sqlite3
 import sys
 import textwrap
@@ -17,7 +19,7 @@ from termcolor import colored
 import terminaltables
 
 # reference: http://stackoverflow.com/a/4028943
-home = expanduser('~')
+home = os.path.expanduser('~')
 log_file_path = home + '/caplog.db'
 
 def create_log_file(log_location):
@@ -40,7 +42,7 @@ def create_log_file(log_location):
     conn.close()
     print('New log file created at {logfile}'.format(logfile=log_location))
 
-def add_to_the_past(log_location, past_date_term):
+def add_to_the_past(log_location, past_date_term, past_message=''):
     """
     Invoked with caplog -p 4 hours ago (example)
     add_to_the_past() will parse the date string, prompt for an entry message,
@@ -54,16 +56,18 @@ def add_to_the_past(log_location, past_date_term):
 
     past_date_timestamp = time.mktime(past_date.timetuple())
 
-    print(colored('Logging an entry dated:' + '\t' +
-                  past_date.strftime('%B %d %Y %H:%M') + '\n' +
-                  'Leave empty to cancel.',
-                  'cyan'))
-    past_message = input('> ')
+    if (past_message.strip() == ''):
+        print(colored('Logging an entry dated:' + '\t' +
+                      past_date.strftime('%B %d %Y %H:%M') + '\n' +
+                      'Leave empty to cancel.',
+                      'cyan'))
+        past_message = input('> ')
 
     if past_message.strip() == '':
         print(colored('Cancelled.', 'red'))
     else:
         add_log_message(log_location, past_message, past_date_timestamp)
+        return(True)
 
 def grep_search_logs(log_location, search_string):
     """
@@ -72,6 +76,34 @@ def grep_search_logs(log_location, search_string):
     """
     results = read_entries(log_location, search_term=search_string)
     return results
+
+def parse_entry_file(entry_dir_path, entry_path):
+    """
+    Verifies that a file is a valid caplog entry.
+    If valid, parses the file into a timestamp and entry text.
+    """
+
+    full_entry_path = os.path.join(entry_dir_path, entry_path)
+    logged_dir_path = os.path.join(entry_dir_path, '_logged', entry_path)
+    with open(full_entry_path, 'rb') as f:
+        lines = f.read().splitlines()
+
+    # pattern that matches a timestamp of the format
+    # 2017-10-22 18:33
+    # Test caplog message.
+    pattern = re.compile(r"^[0-9]{4}-[0-9]{1,}-[0-9]{1,}\s[0-9]{1,}:[0-9]{1,}")
+    checked = pattern.match(lines[0].decode('utf-8'))
+
+    if (checked and len(lines) > 1):
+        timestamp = lines.pop(0).decode('utf-8')
+        entry = ' '.join([line.decode('utf-8').strip() for line in lines])
+
+        # check if adding the message succeeds
+        # and delete the file if it does
+        if (add_to_the_past(log_file_path, timestamp, entry)):
+            if not os.path.exists(logged_dir_path):
+                os.makedirs(logged_dir_path)
+            shutil.move(full_entry_path, logged_dir_path)
 
 def amend_last_entry(log_location, logmessage):
     """
@@ -110,6 +142,18 @@ def delete_last_entry(log_location):
         conn.commit()
         conn.close()
         print(colored('Last entry deleted.', 'cyan'))
+
+def find_entry_files(entry_dir_path):
+    """
+    Looks in the provided path and attempts to parse any files
+    it finds there. It uses parse_entry_file() to validate the entries
+    and log them if they pass.
+    """
+
+    files = os.listdir(entry_dir_path)
+    for candidate in files:
+        if candidate.endswith('.txt'):
+            parse_entry_file(entry_dir_path, candidate)
 
 def format_log_entry(sql_rows):
     """
@@ -151,7 +195,7 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
     It also handles first-run scenario where no file exists. In that case
     it will create the empty log file.
     """
-    if not isfile(log_location):
+    if not os.path.isfile(log_location):
         create_log_file(log_location)
 
     else:
@@ -195,7 +239,7 @@ def add_log_message(log_location, logmessage, past_time=0):
     a message. It handles entering a log message at present time, or at a past
     time if the past_time variable contains something other than 0
     """
-    if not isfile(log_location):
+    if not os.path.isfile(log_location):
         create_log_file(log_location)
 
     if logmessage != '':
@@ -265,6 +309,12 @@ if __name__ == '__main__':
                        nargs='+',
                        action='store')
 
+    # -b check and add logs in batch from files
+    group.add_argument('-b', '--batch',
+                       help='add entries in batch from a directory',
+                       nargs='*',
+                       action='store')
+
     # -d delete last log entry
     group.add_argument('-d', '--delete',
                        help='delete last log entry',
@@ -312,6 +362,11 @@ if __name__ == '__main__':
     elif args.amend:
         newlogmessage = ' '.join(args.amend)
         amend_last_entry(log_file_path, newlogmessage)
+
+    # if user specified the batch option, check provided dir
+    elif args.batch:
+        entries_dir = args.batch[0]
+        find_entry_files(entries_dir)
 
     # if user specified the delete option, delete the last log entry
     elif args.delete:

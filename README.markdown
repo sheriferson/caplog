@@ -24,8 +24,9 @@ $ caplog Made progress on my caplog script.
 Other usage:
 
 ```text
-usage: caplog.py [-h] [-a AMEND [AMEND ...] | -d | -g GREP [GREP ...] | -l
-                 [NLOGS] | -p [PAST [PAST ...]] | -c | -r]
+usage: caplog.py [-h] [-a AMEND [AMEND ...] | -b [BATCH [BATCH ...]] | -d | -g
+                 GREP [GREP ...] | -l [NLOGS] | -p [PAST [PAST ...]] | -c |
+                 -r]
                  [logmessage [logmessage ...]]
 
 I am the captain. This is my log. caplog keeps short simple logs.
@@ -37,6 +38,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -a AMEND [AMEND ...], --amend AMEND [AMEND ...]
                         amend last log entry
+  -b [BATCH [BATCH ...]], --batch [BATCH [BATCH ...]]
+                        add entries in batch from a directory
   -d, --delete          delete last log entry
   -g GREP [GREP ...], --grep GREP [GREP ...]
                         search entries including term
