@@ -11,12 +11,15 @@ import re
 import shutil
 import sqlite3
 import sys
+import tempfile
 import textwrap
 import time
 
 import dateparser
-from termcolor import colored
 import terminaltables
+
+from termcolor import colored
+from subprocess import call
 
 # reference: http://stackoverflow.com/a/4028943
 home = os.path.expanduser('~')
@@ -58,16 +61,18 @@ def add_to_the_past(log_location, past_date_term, past_message=''):
 
     if (past_message.strip() == ''):
         print(colored('Logging an entry dated:' + '\t' +
-                      past_date.strftime('%B %d %Y %H:%M') + '\n' +
-                      'Leave empty to cancel.',
+                      past_date.strftime('%B %d %Y %H:%M'),
                       'cyan'))
-        past_message = input('> ')
+        with tempfile.NamedTemporaryFile(suffix='.tmp') as temp_log_file:
+            editor = '/usr/local/bin/nvim'
+            call([editor, temp_log_file.name])
+            with open(temp_log_file.name) as temp_input_file:
+                past_message = temp_input_file.read()
 
     if past_message.strip() == '':
         print(colored('Cancelled.', 'red'))
     else:
-        add_log_message(log_location, past_message, past_date_timestamp)
-        return(True)
+        return(add_log_message(log_location, past_message.strip(), past_date_timestamp))
 
 def grep_search_logs(log_location, search_string):
     """
@@ -263,6 +268,7 @@ def add_log_message(log_location, logmessage, past_time=0):
 
         conn.commit()
         conn.close()
+        return(True)
 
 def show_count(log_location):
     """
