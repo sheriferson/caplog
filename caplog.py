@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=no-else-return
 """
 I am the captain. This is my log. caplog keeps short simple logs.
 caplog.py is the main script file for caplog. It contains the parser
@@ -10,6 +11,7 @@ import os
 import re
 import shutil
 import sqlite3
+from subprocess import call
 import sys
 import tempfile
 import textwrap
@@ -19,7 +21,6 @@ import dateparser
 import terminaltables
 
 from termcolor import colored
-from subprocess import call
 
 # reference: http://stackoverflow.com/a/4028943
 home = os.path.expanduser('~')
@@ -71,6 +72,7 @@ def add_to_the_past(log_location, past_date_term, past_message=''):
 
     if past_message.strip() == '':
         print(colored('Cancelled.', 'red'))
+        return(False)
     else:
         return(add_log_message(log_location, past_message.strip(), past_date_timestamp))
 
@@ -202,6 +204,7 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
     """
     if not os.path.isfile(log_location):
         create_log_file(log_location)
+        return(None)
 
     else:
         try:
@@ -233,7 +236,7 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
 
             entries = c.fetchall()
             conn.close()
-            return entries
+            return(entries)
         except:
             raise RuntimeError(("A problem occurred while parsing log file. "
                                 "File might be empty or corrupt."))
@@ -269,6 +272,8 @@ def add_log_message(log_location, logmessage, past_time=0):
         conn.commit()
         conn.close()
         return(True)
+    else:
+        return(False)
 
 def show_count(log_location):
     """
