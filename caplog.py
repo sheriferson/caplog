@@ -183,7 +183,9 @@ def format_log_entry(sql_rows):
     max_width = return_table.column_max_width(1)
 
     for ii in list(range(1, len(return_table.table_data))):
-        wrapped_message = '\n'.join(textwrap.wrap(return_table.table_data[ii][1], max_width))
+        wrapped_message = '\n\n'.join(['\n'.join(textwrap.wrap(line,
+                                                               max_width,
+                                                               break_long_words=False, replace_whitespace=False)) for line in return_table.table_data[ii][1].splitlines() if line.strip() != ''])
         return_table.table_data[ii][1] = wrapped_message
 
     return return_table.table
