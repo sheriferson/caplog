@@ -64,6 +64,12 @@ def add_to_the_past(log_location, past_date_term, past_message=''):
         print(colored('Logging an entry dated:' + '\t' +
                       past_date.strftime('%B %d %Y %H:%M'),
                       'cyan'))
+        confirmation = input(colored("\nEnter 'y' to confirm, or anything else to cancel.",
+                                     'cyan'))
+        if confirmation.strip() != 'y':
+            print(colored('Cancelled.', 'red'))
+            return(False)
+
         with tempfile.NamedTemporaryFile(suffix='.tmp') as temp_log_file:
             editor = '/usr/local/bin/nvim'
             call([editor, temp_log_file.name])
