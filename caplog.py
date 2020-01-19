@@ -26,6 +26,7 @@ from termcolor import colored
 home = os.path.expanduser('~')
 log_file_path = home + '/caplog.db'
 
+
 def create_log_file(log_location):
     """
     This function is called internally when no log file is found.
@@ -39,12 +40,14 @@ def create_log_file(log_location):
     c.execute('''create trigger logging
             after insert on logs
             begin
-                insert into console (log_timestamp, entry_timestamp) values (strftime('%s', 'now'), new.timestamp);
+                insert into console (log_timestamp, entry_timestamp)
+                values (strftime('%s', 'now'), new.timestamp);
             end
             ;''')
     conn.commit()
     conn.close()
     print('New log file created at {logfile}'.format(logfile=log_location))
+
 
 def add_to_the_past(log_location, past_date_term, past_message=''):
     """
@@ -82,6 +85,7 @@ def add_to_the_past(log_location, past_date_term, past_message=''):
     else:
         return(add_log_message(log_location, past_message.strip(), past_date_timestamp))
 
+
 def grep_search_logs(log_location, search_string):
     """
     grep_search_logs() is invoked by caplog -g 'search term'
@@ -89,6 +93,7 @@ def grep_search_logs(log_location, search_string):
     """
     results = read_entries(log_location, search_term=search_string)
     return results
+
 
 def parse_entry_file(entry_dir_path, entry_path):
     """
@@ -118,6 +123,7 @@ def parse_entry_file(entry_dir_path, entry_path):
                 os.makedirs(logged_dir_path)
             shutil.move(full_entry_path, logged_dir_path)
 
+
 def amend_last_entry(log_location, logmessage):
     """
     Invoked by `caplog -a New amended entry`
@@ -140,6 +146,7 @@ def amend_last_entry(log_location, logmessage):
         conn.commit()
         conn.close()
 
+
 def delete_last_entry(log_location):
     """
     Connects to log entries file and deletes last entry.
@@ -156,6 +163,7 @@ def delete_last_entry(log_location):
         conn.close()
         print(colored('Last entry deleted.', 'cyan'))
 
+
 def find_entry_files(entry_dir_path):
     """
     Looks in the provided path and attempts to parse any files
@@ -167,6 +175,7 @@ def find_entry_files(entry_dir_path):
     for candidate in files:
         if candidate.endswith('.txt'):
             parse_entry_file(entry_dir_path, candidate)
+
 
 def format_log_entry(sql_rows):
     """
@@ -190,12 +199,17 @@ def format_log_entry(sql_rows):
     max_width = 80 if max_width > 80 else max_width
 
     for ii in list(range(1, len(return_table.table_data))):
-        wrapped_message = '\n\n'.join(['\n'.join(textwrap.wrap(line,
-                                                               max_width,
-                                                               break_long_words=False, replace_whitespace=False)) for line in return_table.table_data[ii][1].splitlines() if line.strip() != ''])
+        wrapped_message = ('\n\n'.join(['\n'.join(textwrap.wrap(line,
+                                                                max_width,
+                                                                break_long_words=False,
+                                                                replace_whitespace=False))
+                           for line in return_table.table_data[ii][1].splitlines()
+                           if line.strip() != '']))
+
         return_table.table_data[ii][1] = wrapped_message
 
     return return_table.table
+
 
 def read_entries(log_location, n=0, search_term="", random_entry=False):
     """
@@ -250,6 +264,7 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
             raise RuntimeError(("A problem occurred while parsing log file. "
                                 "File might be empty or corrupt."))
 
+
 def add_log_message(log_location, logmessage, past_time=0):
     """
     Invoked by `caplog My log message` or `caplog -p 4 hours ago` plus
@@ -265,7 +280,7 @@ def add_log_message(log_location, logmessage, past_time=0):
         conn = sqlite3.connect(log_location)
         c = conn.cursor()
 
-        if past_time != 0: # user provided a past time
+        if past_time != 0:  # user provided a past time
             c.execute("""
                       insert into logs (timestamp, entry)
                       values ({pasttime}, '{message}')
@@ -284,6 +299,7 @@ def add_log_message(log_location, logmessage, past_time=0):
     else:
         return(False)
 
+
 def show_count(log_location):
     """
     caplog -c
@@ -297,6 +313,7 @@ def show_count(log_location):
     count = count[0][0]
     return count
 
+
 # reference: http://stackoverflow.com/a/3940137
 def show_log_tail(log_location, n=3):
     """
@@ -308,6 +325,7 @@ def show_log_tail(log_location, n=3):
         entries.reverse()
 
         print(format_log_entry(entries))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=("I am the captain. "
