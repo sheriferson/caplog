@@ -187,6 +187,7 @@ def format_log_entry(sql_rows):
     # https://github.com/Robpol86/terminaltables/blob/master/example3.py
     return_table = terminaltables.SingleTable(full_result)
     max_width = return_table.column_max_width(1)
+    max_width = 80 if max_width > 80 else max_width
 
     for ii in list(range(1, len(return_table.table_data))):
         wrapped_message = '\n\n'.join(['\n'.join(textwrap.wrap(line,
