@@ -34,10 +34,9 @@ def create_log_file(log_location):
     print('No log file found. Creating file...')
 
     conn = sqlite3.connect(log_location)
-    c = conn.cursor()
-    c.execute('create table logs (timestamp TIMESTAMP, entry TEXT);')
-    c.execute('create table console (log_timestamp TIMESTAMP, entry_timestamp TIMESTAMP);')
-    c.execute('''create trigger logging
+    conn.execute('create table logs (timestamp TIMESTAMP, entry TEXT);')
+    conn.execute('create table console (log_timestamp TIMESTAMP, entry_timestamp TIMESTAMP);')
+    conn.execute('''create trigger logging
             after insert on logs
             begin
                 insert into console (log_timestamp, entry_timestamp)
@@ -67,11 +66,11 @@ def add_to_the_past(log_location, past_date_term, past_message=''):
         print(colored('Logging an entry dated:' + '\t' +
                       past_date.strftime('%B %d %Y %H:%M'),
                       'cyan'))
-        confirmation = input(colored("\nEnter 'y' to confirm, or anything else to cancel.",
+        confirmation = input(colored("\nEnter 'Y' to confirm, or anything else to cancel.",
                                      'cyan'))
-        if confirmation.strip() != 'y':
+        if confirmation.strip() != 'Y':
             print(colored('Cancelled.', 'red'))
-            return(False)
+            return False
 
         with tempfile.NamedTemporaryFile(suffix='.tmp') as temp_log_file:
             editor = '/usr/local/bin/nvim'
@@ -81,9 +80,9 @@ def add_to_the_past(log_location, past_date_term, past_message=''):
 
     if past_message.strip() == '':
         print(colored('Cancelled.', 'red'))
-        return(False)
+        return False
     else:
-        return(add_log_message(log_location, past_message.strip(), past_date_timestamp))
+        return add_log_message(log_location, past_message.strip(), past_date_timestamp)
 
 
 def grep_search_logs(log_location, search_string):
@@ -136,32 +135,31 @@ def amend_last_entry(log_location, logmessage):
 
     if logmessage != '':
         conn = sqlite3.connect(log_location)
-        c = conn.cursor()
-        c.execute("select * from logs order by timestamp desc limit 1")
-        lastrow = c.fetchall()
-        lasttime = lastrow[0][0]
+        lastrow = conn.execute(
+            "select * from logs order by timestamp desc limit 1"
+        ).fetchone()
+        lasttime = lastrow[0]
 
-        c.execute("update logs set entry=('{logentry}') where timestamp=({time})"
+        conn.execute("update logs set entry=('{logentry}') where timestamp=({time})"
                   .format(logentry=logmessage, time=lasttime))
         conn.commit()
         conn.close()
 
 
-def delete_last_entry(log_location):
+def delete_latest_entry(log_location):
     """
     Connects to log entries file and deletes last entry.
     Last entry is defined as entry with max(timestamp).
     """
-    print(colored('Are you sure you want to delete the last entry? Y/n', 'red'))
+    print(colored('Are you sure you want to delete the latest entry? Y/n', 'red'))
     confirm_delete = input('> ')
 
-    if confirm_delete.lower() == 'y':
+    if confirm_delete == 'Y':
         conn = sqlite3.connect(log_location)
-        c = conn.cursor()
-        c.execute('delete from logs where timestamp = (select max(timestamp) from logs);')
+        conn.execute('delete from logs where timestamp = (select max(timestamp) from logs);')
         conn.commit()
         conn.close()
-        print(colored('Last entry deleted.', 'cyan'))
+        print(colored('Latest entry deleted.', 'cyan'))
 
 
 def find_entry_files(entry_dir_path):
@@ -227,7 +225,7 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
     """
     if not os.path.isfile(log_location):
         create_log_file(log_location)
-        return(None)
+        return None
 
     else:
         try:
@@ -259,7 +257,7 @@ def read_entries(log_location, n=0, search_term="", random_entry=False):
 
             entries = c.fetchall()
             conn.close()
-            return(entries)
+            return entries
         except:
             raise RuntimeError(("A problem occurred while parsing log file. "
                                 "File might be empty or corrupt."))
@@ -278,26 +276,23 @@ def add_log_message(log_location, logmessage, past_time=0):
         # sanitize apostrophes so I can write "I'm" and "don't" in log messages
         logmessage = logmessage.replace("'", "''")
         conn = sqlite3.connect(log_location)
-        c = conn.cursor()
 
         if past_time != 0:  # user provided a past time
-            c.execute("""
+            conn.execute("""
                       insert into logs (timestamp, entry)
                       values ({pasttime}, '{message}')
-                      """
-                      .format(pasttime=past_time, message=logmessage))
+                      """ .format(pasttime=past_time, message=logmessage))
         else:
-            c.execute("""
+            conn.execute("""
                       insert into logs (timestamp, entry)
                       values (strftime('%s', 'now'), '{message}')
-                      """
-                      .format(message=logmessage))
+                      """ .format(message=logmessage))
 
         conn.commit()
         conn.close()
-        return(True)
+        return True
     else:
-        return(False)
+        return False
 
 
 def show_count(log_location):
@@ -307,10 +302,7 @@ def show_count(log_location):
     the total number of entries in caplog.db
     """
     conn = sqlite3.connect(log_location)
-    c = conn.cursor()
-    c.execute('select count(*) from logs')
-    count = c.fetchall()
-    count = count[0][0]
+    count = conn.execute('select count(*) from logs').fetchone()[0]
     return count
 
 
@@ -408,7 +400,7 @@ if __name__ == '__main__':
 
     # if user specified the delete option, delete the last log entry
     elif args.delete:
-        delete_last_entry(log_file_path)
+        delete_latest_entry(log_file_path)
 
     # if user specified past date with the -p switch,
     # create the new date and prompt for an entry
